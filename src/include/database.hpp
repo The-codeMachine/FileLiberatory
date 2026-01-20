@@ -16,7 +16,11 @@ public:
 	Database(const std::string& path);
 
 	// Destructor
+	~Database();
 	
+	// Raw access
+	sqlite3* raw();
+
 	// Move Only
 
 	// Statement preparation
@@ -27,8 +31,11 @@ public:
 
 	// this will execute and returns nothing (insert/update/delete)
 
+	// Error handling
+	std::string errMsg();
+
 private:
-	sqlite3* db_; // owns the db
+	sqlite3* raw_; // owns the db
 
 };
 
@@ -36,13 +43,18 @@ private:
 class PreparedStatement {
 public:
 	// Constructor
-	PreparedStatement(const Database& db, const std::string& sql);
+	PreparedStatement(Database& db, const std::string& sql);
 
 	// Destructor
+	~PreparedStatement();
 
 	// Move Only
 
 	// Public getters
+	std::string getText(const uint16_t& col);
+	int getInt(const uint16_t& col);
+	double getDouble(const uint16_t& col);
+	float getFloat(const uint16_t& col);
 
 	// Execution functions
 	// this will execute and return a value (get)
@@ -50,14 +62,10 @@ public:
 	// this will execute and return nothing (insert/update/delete)
 
 	// Reset functions (clear bindings)
-
-	// Reset function (deletion)
-
-private:
-	// Getters 
+	void reset();
 
 private:
 	Database& db_; // does not own the db_ 
-	sqlite3_stmt* stmt_; // owns the stmt_
+	sqlite3_stmt* raw_; // owns the stmt_
 
 };
