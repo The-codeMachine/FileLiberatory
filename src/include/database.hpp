@@ -54,7 +54,12 @@ public:
 	std::string getText(const uint16_t& col);
 	int getInt(const uint16_t& col);
 	double getDouble(const uint16_t& col);
-	float getFloat(const uint16_t& col);
+
+	// Column info
+	int getColumnCount();
+	uint16_t getColumnBytes(const uint16_t& col);
+	
+	// Setters
 
 	// Execution functions
 	// this will execute and return a value (get)
