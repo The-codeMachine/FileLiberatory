@@ -1,5 +1,6 @@
 #include <database.hpp>
 
+#include <cassert>
 #include <stdexcept>
 
 // ---- Database ----
@@ -50,6 +51,23 @@ PreparedStatement::~PreparedStatement() {
 	}
 }
 
+// Move Only
+PreparedStatement::PreparedStatement(PreparedStatement&& other) noexcept : raw_(other.raw_), db_(other.db_) {
+	other.raw_ = nullptr;
+}
+
+PreparedStatement& PreparedStatement::operator=(PreparedStatement&& other) noexcept {
+	if (this != &other) {
+		assert(&db_ == &other.db_ && "Cannot move-assign across databases"); // no reassignment using different databases
+
+		delete raw_;
+		raw_ = other.raw_;
+		other.raw_ = nullptr;
+	}
+
+	return *this;
+}
+
 // Getters 
 std::string PreparedStatement::getText(const uint16_t& col) {
 	const unsigned char* result = sqlite3_column_text(raw_, col);
@@ -72,4 +90,53 @@ int PreparedStatement::getColumnCount() {
 
 uint16_t PreparedStatement::getColumnBytes(const uint16_t& col) {
 	return sqlite3_column_bytes(raw_, col);
+}
+
+// Binding
+void PreparedStatement::bindInt(const uint16_t& col, int value) {
+	if (sqlite3_bind_int(raw_, col, value) != SQLITE_OK) 
+		throw std::runtime_error("Failed to bind to column: " + std::to_string(col));
+}
+
+void PreparedStatement::bindDouble(const uint16_t& col, double value) {
+	if (sqlite3_bind_double(raw_, col, value) != SQLITE_OK)
+		throw std::runtime_error("Failed to bind to column: " + std::to_string(col));
+}
+
+void PreparedStatement::bindText(const uint16_t& col, const std::string& value) {
+	if (sqlite3_bind_text(raw_, col, value.c_str(), -1, SQLITE_TRANSIENT) != SQLITE_OK)
+		throw std::runtime_error("Failed to bind to column: " + std::to_string(col));
+}
+
+void PreparedStatement::bindBlob(const uint16_t& col, const void* data, size_t size) {
+	if (sqlite3_bind_blob(raw_, col, data, size, nullptr) != SQLITE_OK)
+		throw std::runtime_error("Failed to bind to column: " + std::to_string(col));
+}
+
+void PreparedStatement::bindNull(const uint16_t& col) {
+	if (sqlite3_bind_null(raw_, col) != SQLITE_OK)
+		throw std::runtime_error("Failed to bind to column: " + std::to_string(col));
+}
+
+// Execution Functions 
+// this will execute and return a value (get)
+bool PreparedStatement::step() {
+	if (sqlite3_step(raw_) != SQLITE_OK) 
+		return false;
+
+	return true;
+}
+
+// this will execute and return nothing (insert/update/delete)
+bool PreparedStatement::exec() {
+	if (sqlite3_step(raw_) != SQLITE_OK) 
+		return false;
+
+	return true;
+}
+
+// Reset function
+void PreparedStatement::reset() {
+	sqlite3_clear_bindings(raw_);
+	sqlite3_reset(raw_);
 }

@@ -49,6 +49,11 @@ public:
 	~PreparedStatement();
 
 	// Move Only
+	PreparedStatement(const PreparedStatement&) = delete;
+	PreparedStatement& operator=(const PreparedStatement&) = delete;
+
+	PreparedStatement(PreparedStatement&& other) noexcept;
+	PreparedStatement& operator=(PreparedStatement&& other) noexcept;
 
 	// Public getters
 	std::string getText(const uint16_t& col);
@@ -59,12 +64,19 @@ public:
 	int getColumnCount();
 	uint16_t getColumnBytes(const uint16_t& col);
 	
-	// Setters
+	// Binding
+	void bindInt(const uint16_t& col, int value);
+	void bindDouble(const uint16_t& col, double value);
+	void bindText(const uint16_t& col, const std::string& value);
+	void bindBlob(const uint16_t& col, const void* data, size_t size);
+	void bindNull(const uint16_t& col);
 
 	// Execution functions
 	// this will execute and return a value (get)
+	bool step();
 
 	// this will execute and return nothing (insert/update/delete)
+	bool exec(); // returns error code 
 
 	// Reset functions (clear bindings)
 	void reset();
