@@ -22,6 +22,21 @@ sqlite3* Database::raw() {
 }
 
 // Move only
+Database::Database(Database&& other) noexcept : raw_(other.raw_) {
+	other.raw_ = nullptr;
+}
+
+Database& Database::operator=(Database&& other) noexcept {
+	if (this != &other) {
+		if (sqlite3_close(raw_) != SQLITE_OK)
+			throw std::runtime_error("Failed to close database");
+
+		raw_ = other.raw_;
+		other.raw_ = nullptr;
+	}
+
+	return *this;
+}
 
 // Prepared statement handling
 PreparedStatement Database::prepare(const std::string& sql) {
@@ -60,7 +75,7 @@ PreparedStatement& PreparedStatement::operator=(PreparedStatement&& other) noexc
 	if (this != &other) {
 		assert(&db_ == &other.db_ && "Cannot move-assign across databases"); // no reassignment using different databases
 
-		delete raw_;
+		sqlite3_finalize(raw_);
 		raw_ = other.raw_;
 		other.raw_ = nullptr;
 	}
@@ -69,18 +84,20 @@ PreparedStatement& PreparedStatement::operator=(PreparedStatement&& other) noexc
 }
 
 // Getters 
-std::string PreparedStatement::getText(const uint16_t& col) {
-	const unsigned char* result = sqlite3_column_text(raw_, col);
-
-	return std::string(reinterpret_cast<const char*>(result));
+std::string PreparedStatement::getText(uint16_t col) {
+	return std::string(reinterpret_cast<const char*>(sqlite3_column_text(raw_, col)));
 }
 
-int PreparedStatement::getInt(const uint16_t& col) {
+int PreparedStatement::getInt(uint16_t col) {
 	return sqlite3_column_int(raw_, col);
 }
 
-double PreparedStatement::getDouble(const uint16_t& col) {
+double PreparedStatement::getDouble(uint16_t col) {
 	return sqlite3_column_double(raw_, col);
+}
+
+const void* PreparedStatement::getBlob(uint16_t col) {
+	return sqlite3_column_blob(raw_, col);
 }
 
 // Column Info
@@ -88,32 +105,32 @@ int PreparedStatement::getColumnCount() {
 	return sqlite3_column_count(raw_);
 }
 
-uint16_t PreparedStatement::getColumnBytes(const uint16_t& col) {
+uint16_t PreparedStatement::getColumnBytes(uint16_t col) {
 	return sqlite3_column_bytes(raw_, col);
 }
 
 // Binding
-void PreparedStatement::bindInt(const uint16_t& col, int value) {
+void PreparedStatement::bindInt(uint16_t col, int value) {
 	if (sqlite3_bind_int(raw_, col, value) != SQLITE_OK) 
 		throw std::runtime_error("Failed to bind to column: " + std::to_string(col));
 }
 
-void PreparedStatement::bindDouble(const uint16_t& col, double value) {
+void PreparedStatement::bindDouble(uint16_t col, double value) {
 	if (sqlite3_bind_double(raw_, col, value) != SQLITE_OK)
 		throw std::runtime_error("Failed to bind to column: " + std::to_string(col));
 }
 
-void PreparedStatement::bindText(const uint16_t& col, const std::string& value) {
+void PreparedStatement::bindText(uint16_t col, const std::string& value) {
 	if (sqlite3_bind_text(raw_, col, value.c_str(), -1, SQLITE_TRANSIENT) != SQLITE_OK)
 		throw std::runtime_error("Failed to bind to column: " + std::to_string(col));
 }
 
-void PreparedStatement::bindBlob(const uint16_t& col, const void* data, size_t size) {
+void PreparedStatement::bindBlob(uint16_t col, const void* data, uint16_t size) {
 	if (sqlite3_bind_blob(raw_, col, data, size, nullptr) != SQLITE_OK)
 		throw std::runtime_error("Failed to bind to column: " + std::to_string(col));
 }
 
-void PreparedStatement::bindNull(const uint16_t& col) {
+void PreparedStatement::bindNull(uint16_t col) {
 	if (sqlite3_bind_null(raw_, col) != SQLITE_OK)
 		throw std::runtime_error("Failed to bind to column: " + std::to_string(col));
 }
@@ -121,7 +138,7 @@ void PreparedStatement::bindNull(const uint16_t& col) {
 // Execution Functions 
 // this will execute and return a value (get)
 bool PreparedStatement::step() {
-	if (sqlite3_step(raw_) != SQLITE_OK) 
+	if (sqlite3_step(raw_) != SQLITE_DONE || sqlite3_step(raw_) != SQLITE_OK)
 		return false;
 
 	return true;
