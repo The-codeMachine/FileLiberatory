@@ -1,17 +1,19 @@
 #pragma once
+
 #include <vector>
 #include <string>
+#include <filesystem>
 
 struct File {
-	const std::string name;
-	const std::string path;
-	const std::string type;
+	std::string name;
+	std::string path;
+	std::string type;
 };
 
 struct Folder {
 	std::vector<File> files;
-	const std::string name;
-	const std::string path;
+	std::string name;
+	std::string path;
 };
 
-std::vector<Folder> lowSearch(const std::string& path);
+Folder lowSearch(const std::filesystem::path& root);

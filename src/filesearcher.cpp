@@ -1,38 +1,38 @@
 #include <filesearcher.hpp>
 
-#include <fstream>
-#include <filesystem>
+#include <stdexcept>
 
-// searches a folder and adds all the files into the files vector
-Folder searchFolder(const std::string& path) {
-	Folder out = {
-		std::vector<File>(),
-		std::filesystem::path(path).filename().string(),
-		path
-	};
+Folder lowSearch(const std::filesystem::path& root) {
+	if (!std::filesystem::exists(root))
+		throw std::runtime_error("Path does not exist: " + root.string());
 
-	try {
-		// Iterate over each entry in the directory
-		for (const auto& entry : std::filesystem::directory_iterator(path)) {
-			// get the path of the current entry 
-			const std::filesystem::path entryPath = entry.path();
+	if (!std::filesystem::is_directory(root))
+		throw std::runtime_error("Path is not a directory: " + root.string());
 
-			// check if the entry is a regular file
-			if (std::filesystem::is_regular_file(entryPath)) {
-				// construct file and insert into the output
-				File file = {
-					entryPath.filename().string(),
-					entryPath.string(),
-					entryPath.extension().string()
-				};
+	Folder out;
+	out.name = root.filename().string();
+	out.path = root.string();
 
-				out.files.push_back(file);
-			}
-		}
+	std::error_code ec;
 
-	}
-	catch (const std::filesystem::filesystem_error& e) {
-		throw std::runtime_error("Failed to loop through a path: " + std::string(e.what()));
+	// Walk entire tree
+	for (std::filesystem::recursive_directory_iterator it = std::filesystem::recursive_directory_iterator(root, ec);
+		it != std::filesystem::recursive_directory_iterator();
+		it.increment(ec)) {
+		if (ec)
+			throw std::runtime_error("Filesystem error while iterating: " + ec.message());
+
+		const std::filesystem::directory_entry& entry = *it;
+		if (!entry.is_regular_file())
+			continue;
+
+		const std::filesystem::path& path = entry.path();
+
+		out.files.emplace_back(File{
+			path.filename().string(),
+			path.string(),
+			path.extension().string()
+			});
 	}
 
 	return out;
