@@ -130,10 +130,12 @@
     <ClCompile Include="src\database.cpp" />
     <ClCompile Include="src\filesearcher.cpp" />
     <ClCompile Include="src\main.cpp" />
+    <ClCompile Include="src\parser.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\include\database.hpp" />
     <ClInclude Include="src\include\filesearcher.hpp" />
+    <ClInclude Include="src\include\parser.hpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

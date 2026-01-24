@@ -1,6 +1,34 @@
 #include <filesearcher.hpp>
+#include <database.hpp>
 
+#include <iostream>
 #include <stdexcept>
+
+// seaches through the entire computer and adds the files to the database
+void initSearch(const std::string& path) {
+	Database db(path);
+
+	std::error_code ec;
+
+	// Walk through the entire C drive
+	for (auto it = std::filesystem::recursive_directory_iterator("C:/", ec); 
+		it != std::filesystem::recursive_directory_iterator(); it.increment(ec)) {
+		if (ec) {
+			std::cerr << "Filesystem had an error: " << ec.message() << "\n";
+			continue;
+		}
+
+		const std::filesystem::directory_entry& entry = *it;
+		static PreparedStatement stmt = db.prepare("INSERT INTO files (path) VALUES (?);");
+		stmt.reset();
+
+		stmt.bindText(1, entry.path().string());
+		if (!stmt.exec()) {
+			std::cerr << "Database error: " << db.errMsg() << "\n";
+			continue;
+		}
+	}
+}
 
 Folder lowSearch(const std::filesystem::path& root) {
 	if (!std::filesystem::exists(root))
@@ -16,7 +44,8 @@ Folder lowSearch(const std::filesystem::path& root) {
 	std::error_code ec;
 
 	// Walk entire tree
-	for (std::filesystem::recursive_directory_iterator it = std::filesystem::recursive_directory_iterator(root, ec);
+	for (std::filesystem::recursive_directory_iterator it = std::filesystem::recursive_directory_iterator(root, 
+		std::filesystem::directory_options::skip_permission_denied, ec);
 		it != std::filesystem::recursive_directory_iterator();
 		it.increment(ec)) {
 		if (ec)
