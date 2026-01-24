@@ -1,5 +1,6 @@
 #include <filesearcher.hpp>
 #include <database.hpp>
+#include <parser.hpp>
 
 #include <iostream>
 #include <chrono>
@@ -20,13 +21,15 @@ int main() {
 			"path TEXT NOT NULL UNIQUE,"
 			"is_dir INTEGER NOT NULL"
 			");").exec();
-		db.prepare("CREATE TABLE IF NOT EXISTS files ("
+		db.prepare("CREATE TABLE IF NOT EXISTS prefixes ("
 			"id INTEGER PRIMARY KEY,"
 			"prefix TEXT UNIQUE,"
 			"uses INTEGER"
 			");").exec();
 
-		scanFolder(db, "D:/Developer/Projects");
+		PrefixManager prefixes(db);
+
+		scanFolder(db, "D:/", prefixes);
 	}
 	catch (const std::exception& e) {
 		std::cerr << "There was an error: " << e.what() << "\n";

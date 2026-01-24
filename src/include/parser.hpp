@@ -15,7 +15,7 @@ class PrefixManager {
 public:
 	// Constructor
 	PrefixManager(Database& db) : db_(db) {
-		loadExisting();
+		//loadExisting();
 	}
 
 	std::string encode(const std::string& path);
@@ -30,7 +30,7 @@ private:
 	static constexpr unsigned int MIN_USES = 250;
 	static constexpr unsigned int MIN_CHARS = 20;
 
-	void loadExisting();
+	//void loadExisting();
 	void promotePrefix(const std::string& prefix);
 	void collectCandidates(const std::string& path);
 	void rebuildSorted();

@@ -51,7 +51,7 @@ void PrefixManager::collectCandidates(const std::string& path) {
 }
 
 void PrefixManager::promotePrefix(const std::string& prefix) {
-    static PreparedStatement stmt = db_.prepare("INSERT OR IGNORE INTO prefixes(prefix, uses VALUES (?, 0);");
+    static PreparedStatement stmt = db_.prepare("INSERT OR IGNORE INTO prefixes(prefix, uses) VALUES (?, 0);");
     stmt.reset();
 
     stmt.bindText(1, prefix);
