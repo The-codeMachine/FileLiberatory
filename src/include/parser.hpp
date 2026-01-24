@@ -1,4 +1,4 @@
 #pragma once
 #include <string>
 
-std::string shorten(const std::string& str);
+std::string parseInput(const std::string& input);
