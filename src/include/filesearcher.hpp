@@ -1,4 +1,5 @@
 #pragma once
+#include <database.hpp>
 
 #include <vector>
 #include <string>
@@ -15,5 +16,9 @@ struct Folder {
 	std::string name;
 	std::string path;
 };
+
+void scanFolder(Database& db, const std::filesystem::path& root);
+
+Folder search(const std::filesystem::path& path); 
 
 Folder lowSearch(const std::filesystem::path& root);

@@ -1,8 +1,53 @@
 #include <filesearcher.hpp>
-#include <database.hpp>
+#include <parser.hpp>
 
 #include <iostream>
 #include <stdexcept>
+
+
+void scanFolder(Database& db, const std::filesystem::path& root, PrefixManager& prefixes) {
+	// Begin transaction 
+	db.prepare("BEGIN TRANSACTION;").exec();
+
+	static PreparedStatement insertStmt = db.prepare(
+		"INSERT OR IGNORE INTO files(path, is_dir) VALUES (?, ?);"
+	);
+
+	try {
+		for (auto it = std::filesystem::recursive_directory_iterator(
+			root,
+			std::filesystem::directory_options::skip_permission_denied);
+			it != std::filesystem::recursive_directory_iterator();
+			++it) {
+			const std::filesystem::path& p = it->path();
+
+			bool isDir = it->is_directory();
+
+			insertStmt.reset();
+			insertStmt.bindText(1, prefixes.encode(p.string()));
+			insertStmt.bindInt(2, isDir ? 1 : 0);
+
+			insertStmt.exec();
+		}
+	}
+	catch (const std::exception& e) {
+		std::cerr << "Filesystem error: " << e.what() << "\n";
+	}
+
+	db.prepare("COMMIT;").exec();
+}
+
+Folder search(const std::filesystem::path& path) {
+	if (!std::filesystem::exists(path))
+		throw std::runtime_error("Path does not exist: " + path.string());
+
+	if (!std::filesystem::is_directory(path))
+		throw std::runtime_error("Path is not a directory: " + path.string());
+
+	Folder out;
+	out.name = path.filename().string();
+	out.path = path.string();
+}
 
 // seaches through the entire computer and adds the files to the database
 void initSearch(const std::string& path) {

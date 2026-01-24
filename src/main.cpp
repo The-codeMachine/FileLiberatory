@@ -1,4 +1,5 @@
 #include <filesearcher.hpp>
+#include <database.hpp>
 
 #include <iostream>
 #include <chrono>
@@ -13,16 +14,22 @@ int main() {
 	auto start = std::chrono::steady_clock::now();
 
 	try {
-		Folder folder = lowSearch("D:/vcpkg");
+		Database db("file_index.db");
+		db.prepare("CREATE TABLE IF NOT EXISTS files ("
+			"id INTEGER PRIMARY KEY,"
+			"path TEXT NOT NULL UNIQUE,"
+			"is_dir INTEGER NOT NULL"
+			");").exec();
+		db.prepare("CREATE TABLE IF NOT EXISTS files ("
+			"id INTEGER PRIMARY KEY,"
+			"prefix TEXT UNIQUE,"
+			"uses INTEGER"
+			");").exec();
 
-		for (const File& file : folder.files) {
-			std::cout << file.type << "\n";
-		}
-
-		std::cout << folder.files.size() << " files found in " << folder.path << "\n";
+		scanFolder(db, "D:/Developer/Projects");
 	}
 	catch (const std::exception& e) {
-		std::cerr << "There was an error: " + std::string(e.what()) << "\n";
+		std::cerr << "There was an error: " << e.what() << "\n";
 	}
 
 	auto end = std::chrono::steady_clock::now();

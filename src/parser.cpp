@@ -1,9 +1,86 @@
 #include <parser.hpp>
 #include <database.hpp>
 
-#include <vector>
 #include <algorithm>
-#include <unordered_map>
+
+std::string PrefixManager::encode(const std::string& path) {
+	// try exisiting prefixes (longest first)
+    for (auto& p : sortedPrefixes_) {
+        if (path.starts_with(p.prefix))
+            return "<" + std::to_string(p.id) + ">" + path.substr(p.prefix.size());
+    }
+
+    // record prefix candidates
+    collectCandidates(path);
+
+    return path;
+}
+
+std::string PrefixManager::decode(const std::string& encoded) {
+    if (encoded.starts_with("<")) {
+        auto end = encoded.find('>');
+        unsigned int id = std::stoi(encoded.substr(1, end - 1));
+
+        PreparedStatement stmt = db_.prepare("SELECT prefix FROM prefixes WHERE id = ?;");
+        stmt.bindInt(1, id);
+
+        if (stmt.step())
+            return stmt.getText(0) + encoded.substr(end + 1);
+    }
+
+    return encoded;
+}
+
+void PrefixManager::collectCandidates(const std::string& path) {
+    size_t pos = 0;
+    unsigned int depth = 0;
+
+    while ((pos = path.find_first_of("/\\", pos + 1)) != std::string::npos) {
+        if (++depth < 2)
+            continue;
+
+        std::string prefix = path.substr(0, pos);
+
+        auto& entry = byPrefix_[prefix];
+        entry.prefix = prefix;
+        entry.uses++;
+
+        if (entry.uses == MIN_USES && prefix.size() >= MIN_CHARS)
+            promotePrefix(prefix);
+    }
+}
+
+void PrefixManager::promotePrefix(const std::string& prefix) {
+    static PreparedStatement stmt = db_.prepare("INSERT OR IGNORE INTO prefixes(prefix, uses VALUES (?, 0);");
+    stmt.reset();
+
+    stmt.bindText(1, prefix);
+    stmt.exec();
+
+    static PreparedStatement idQuery = db_.prepare("SELECT id FROM prefixes WHERE prefix = ?;");
+    idQuery.reset();
+    idQuery.bindText(1, prefix);
+
+    if (idQuery.step()) {
+        int id = idQuery.getInt(0);
+        Prefix p{ id, prefix, 0 };
+
+        byPrefix_[prefix] = p;
+        rebuildSorted();
+    }
+}
+
+void PrefixManager::rebuildSorted() {
+    sortedPrefixes_.clear();
+    for (auto& [k, v] : byPrefix_)
+        sortedPrefixes_.push_back(v);
+
+    std::sort(sortedPrefixes_.begin(),
+        sortedPrefixes_.end(),
+        [](auto& a, auto& b) {
+            return a.prefix.size() > b.prefix.size();
+        });
+}
 
 // Generates small unique IDs: a, b, c, ... , z, A .. Z, 0..9, aa, ab, ...
 static std::string generateToken(size_t id) {
